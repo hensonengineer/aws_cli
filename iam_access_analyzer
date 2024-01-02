@@ -1,0 +1,29 @@
+## PART ONE: Get a clean text file of all accounts in your ORG
+
+# from the ORG Master Account:
+aws organizations list-accounts --query 'Accounts[*].Id' --output table | sed 's/^| //; s/ |$//' >known_accts.txt
+
+# clean leading and trailing spaces
+sed -i '' 's/^[[:space:]]*//;s/[[:space:]]*$//' known_accts.txt
+
+
+
+## PART TWO: From AWS Account you are investigating - get Analyzer Findings
+
+# Get list of Accounts
+aws accessanalyzer list-findings --analyzer-arn [AnalyzerArn] --query 'findings[].principal.AWS' --output table >output.txt
+
+# Initial file clean - Get ride of leading pipe | and spaces in file
+sed 's/^|  //' output.txt > cleanedoutput.txt
+
+# Extract just the 12 digit AWS Account numbers
+awk 'match($0, /[0-9]{12}/) {print substr($0, RSTART, RLENGTH)}' cleanedouput.txt > analyzer_account_list.txt
+
+#prep and clean
+# clean leading and trailing spaces
+sed -i '' 's/^[[:space:]]*//;s/[[:space:]]*$//' analyzer_account_list.txt
+sort -u analyzer_account_list -o analyzer_account_list.txt
+sort -u known_accts.txt -o known_accts.txt
+
+# output list of accounts not in your AWS ORG for review
+grep -vxFf known_accts.txt analyzer_account_list.txt >accounts_not_in_org.txt
